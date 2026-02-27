@@ -156,25 +156,34 @@ function Popup({ onClose, open, title, desc, children }: PopupProps) {
               style={{
                 textAlign: "center",
                 width: "auto",
-                ...theme.fonts.headlineSmall,
+                ...theme.fonts.headlineMedium,
               }}
             >
               {title}
             </Text>
-            <Text>Configure the volume level that should be setted.</Text>
+            <Text style={{ ...theme.fonts.bodyLarge }}>
+              Configure the volume level that should be set.
+            </Text>
           </View>
         </Dialog.Title>
         <Dialog.Content>{children}</Dialog.Content>
         <Dialog.Actions style={{ justifyContent: "center" }}>
-          <Text
-            style={{
-              ...theme.fonts.headlineLarge,
+          <Button
+            icon="check"
+            mode="contained"
+            onPress={onClose}
+            labelStyle={{
+              ...theme.fonts.titleLarge, // usa tipografia do Material 3
+              textAlign: "center",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            contentStyle={{
+              paddingHorizontal: 12,
             }}
           >
-            <Button icon="check" onPress={onClose}>
-              Confirm
-            </Button>
-          </Text>
+            Confirm
+          </Button>
         </Dialog.Actions>
       </Dialog>
     </Portal>
