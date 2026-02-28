@@ -3,19 +3,34 @@ import { useState } from "react";
 import {
   Button,
   Dialog,
+  HelperText,
   Icon,
   IconButton,
   Portal,
   Text,
+  TextInput,
   useTheme,
 } from "react-native-paper";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
 
+function formatTime(input: string) {
+  const numbers = input.replace(/\D/g, "").slice(-6);
+  const padded = numbers.padStart(6, "0");
+
+  const hours = padded.slice(0, 2);
+  const minutes = padded.slice(2, 4);
+  const seconds = padded.slice(4, 6);
+
+  return `${hours}:${minutes}:${seconds}`;
+}
+
 export default function Index() {
   // TODO: should set/get from some storage
   const [isActive, setIsActive] = useState<boolean>(false);
   const [showVolumeDialog, setShowVolumeDialog] = useState<boolean>(false);
+  const [showTimerDialog, setShowTimerDialog] = useState<boolean>(false);
+  const [timerValue, setTimerValue] = useState<string>("00:00:00");
   const [volumeValue, setVolumeValue] = useState<number>(100);
   const theme = useTheme();
 
@@ -59,7 +74,7 @@ export default function Index() {
         />
         <SurfaceButton
           icon="clock-time-five-outline"
-          onClick={() => console.log("bomdia time")}
+          onClick={() => setShowTimerDialog(true)}
         />
         <SurfaceButton
           icon="cog-outline"
@@ -97,6 +112,45 @@ export default function Index() {
             {volumeValue}
           </Text>
         </View>
+      </Popup>
+
+      <Popup
+        onClose={() => {
+          setShowTimerDialog(false);
+        }}
+        open={showTimerDialog}
+        title="Schedule"
+        desc="Configure the schedule that should trigger the volume after device volume is changed."
+      >
+        <TextInput
+          keyboardType="number-pad"
+          value={timerValue}
+          left={<TextInput.Icon icon="clock" />}
+          right={
+            <TextInput.Icon
+              icon="close"
+              onPress={() => setTimerValue("00:00:00")}
+            />
+          }
+          contentStyle={{
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+          onChangeText={(text) => {
+            setTimerValue(formatTime(text));
+          }}
+        />
+        <HelperText
+          visible
+          type="info"
+          style={{
+            ...theme.fonts.titleSmall,
+            textAlign: "center",
+          }}
+        >
+          HH:MM:SS
+        </HelperText>
       </Popup>
     </View>
   );
