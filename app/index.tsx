@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Dialog,
@@ -13,6 +13,8 @@ import {
 } from "react-native-paper";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
+import BackgroundService from "react-native-background-actions";
+import { VolumeManager } from "react-native-volume-manager";
 
 function formatTime(input: string) {
   const numbers = input.replace(/\D/g, "").slice(-6);
@@ -25,14 +27,77 @@ function formatTime(input: string) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
+function timerToMs(timer: string): number {
+  const [hours, minutes, seconds] = timer.split(":").map(Number);
+  return (hours * 3600 + minutes * 60 + seconds) * 1000;
+}
+
+type TaskData = {
+  delay: number;
+};
+
 export default function Index() {
-  // TODO: should set/get from some storage
   const [isActive, setIsActive] = useState<boolean>(false);
   const [showVolumeDialog, setShowVolumeDialog] = useState<boolean>(false);
   const [showTimerDialog, setShowTimerDialog] = useState<boolean>(false);
-  const [timerValue, setTimerValue] = useState<string>("00:00:00");
+  const [timerValue, setTimerValue] = useState<string>("00:10:00");
   const [volumeValue, setVolumeValue] = useState<number>(100);
+  const timerRef = useRef(timerValue);
   const theme = useTheme();
+
+  useEffect(() => {
+    timerRef.current = timerValue;
+  }, [timerValue]);
+
+  const task = async (taskDataArguments: TaskData | undefined) => {
+    const { delay } = taskDataArguments!;
+    console.log("TASK STARTED", delay);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    VolumeManager.setVolume(volumeValue);
+    console.log("TASK FINISHED");
+    await BackgroundService.stop();
+  };
+
+  useEffect(() => {
+    async function startDelayedAdjustment() {
+      if (BackgroundService.isRunning()) {
+        console.log("SERVICE ALREADY RUNNING");
+        return;
+      }
+      console.log("CURRENT: ", timerRef.current, timerToMs(timerRef.current), volumeValue);
+
+      const options = {
+        taskName: "Volume Timer",
+        taskTitle: "Volume Timer running",
+        taskDesc: "Waiting to adjust volume",
+        taskIcon: {
+          name: "ic_launcher",
+          type: "mipmap",
+        },
+        color: "#ffffff",
+        parameters: {
+          delay: timerToMs(timerRef.current),
+        }
+      }
+
+      console.log("OPTIONS", options);
+
+      try {
+        console.log("STARTING SERVICE");
+        await BackgroundService.start(task, options);
+      } catch (e) {
+        console.log("BACKGROUND ERROR", e);
+      }
+    }
+
+    const subscription = VolumeManager.addVolumeListener(() => {
+      console.log("VOLUME changed");
+      startDelayedAdjustment();
+    });
+
+    return () => subscription.remove();
+
+  }, [task, volumeValue]);
 
   return (
     <View style={styles.flex}>
@@ -59,6 +124,7 @@ export default function Index() {
           setIsActive(!isActive);
         }}
       />
+
       <View
         style={{
           justifyContent: "center",
@@ -72,22 +138,25 @@ export default function Index() {
           icon="volume-high"
           onClick={() => setShowVolumeDialog(true)}
         />
+
         <SurfaceButton
           icon="clock-time-five-outline"
           onClick={() => setShowTimerDialog(true)}
         />
+
         <SurfaceButton
           icon="cog-outline"
-          onClick={() => console.log("bomdia permission")}
+          onClick={async () => {
+            console.log("permission button");
+          }}
         />
       </View>
+
       <Popup
-        onClose={() => {
-          setShowVolumeDialog(false);
-        }}
+        onClose={() => setShowVolumeDialog(false)}
         open={showVolumeDialog}
         title="Volume"
-        desc="Configure the volume level that should be setted."
+        desc="Configure the volume level that should be set."
       >
         <View
           style={{
@@ -96,7 +165,8 @@ export default function Index() {
             alignItems: "center",
           }}
         >
-          <Icon source={"volume-high"} size={48} allowFontScaling />
+          <Icon source={"volume-high"} size={48} />
+
           <Slider
             style={{ width: "70%" }}
             minimumValue={0}
@@ -108,6 +178,7 @@ export default function Index() {
             maximumTrackTintColor={theme.colors.onBackground}
             thumbTintColor={theme.colors.primary}
           />
+
           <Text style={{ ...theme.fonts.titleLarge, width: "100%" }}>
             {volumeValue}
           </Text>
@@ -115,12 +186,10 @@ export default function Index() {
       </Popup>
 
       <Popup
-        onClose={() => {
-          setShowTimerDialog(false);
-        }}
+        onClose={() => setShowTimerDialog(false)}
         open={showTimerDialog}
         title="Schedule"
-        desc="Configure the schedule that should trigger the volume after device volume is changed."
+        desc="Configure the schedule that should trigger the volume."
       >
         <TextInput
           keyboardType="number-pad"
@@ -141,6 +210,7 @@ export default function Index() {
             setTimerValue(formatTime(text));
           }}
         />
+
         <HelperText
           visible
           type="info"
@@ -156,7 +226,6 @@ export default function Index() {
   );
 }
 
-//  TODO: get the type of  MaterialIcon or surface
 type SurfaceButtonProps = {
   icon: string;
   onClick: CallableFunction;
@@ -191,6 +260,7 @@ type PopupProps = {
 
 function Popup({ onClose, open, title, desc, children }: PopupProps) {
   const theme = useTheme();
+
   return (
     <Portal>
       <Dialog visible={open} onDismiss={onClose}>
@@ -199,41 +269,36 @@ function Popup({ onClose, open, title, desc, children }: PopupProps) {
             style={{
               flexDirection: "column",
               width: "100%",
-              flex: 1,
               gap: 16,
               justifyContent: "center",
               alignItems: "center",
             }}
           >
             <Icon source="cog-outline" size={26} />
+
             <Text
               style={{
                 textAlign: "center",
-                width: "auto",
                 ...theme.fonts.headlineMedium,
               }}
             >
               {title}
             </Text>
-            <Text style={{ ...theme.fonts.bodyLarge }}>
-              Configure the volume level that should be set.
-            </Text>
+
+            <Text style={{ ...theme.fonts.bodyLarge }}>{desc}</Text>
           </View>
         </Dialog.Title>
+
         <Dialog.Content>{children}</Dialog.Content>
+
         <Dialog.Actions style={{ justifyContent: "center" }}>
           <Button
             icon="check"
             mode="contained"
             onPress={onClose}
             labelStyle={{
-              ...theme.fonts.titleLarge, // usa tipografia do Material 3
+              ...theme.fonts.titleLarge,
               textAlign: "center",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-            contentStyle={{
-              paddingHorizontal: 12,
             }}
           >
             Confirm
@@ -250,15 +315,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   toggleContainer: {
     justifyContent: "center",
     alignItems: "center",
     width: 200,
     height: 200,
     borderRadius: 100,
-  },
-  toggleIcon: {
-    marginLeft: 6,
-    justifyContent: "center",
   },
 });
