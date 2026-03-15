@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { Provider as PaperProvider, MD3LightTheme } from "react-native-paper";
+import { MD3LightTheme, Provider as PaperProvider } from "react-native-paper";
 
 export default function RootLayout() {
   return (
