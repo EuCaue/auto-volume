@@ -3,6 +3,8 @@ import BackgroundService from "react-native-background-actions";
 import { VolumeManager } from "react-native-volume-manager";
 
 import { timerToMs } from "@/utils/time";
+import { useMMKVBoolean, useMMKVNumber } from "react-native-mmkv";
+import { KEYS } from "@/utils/storage";
 
 type TaskData = {
   delay: number;
@@ -10,6 +12,8 @@ type TaskData = {
 
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
+  const [isActive] = useMMKVBoolean(KEYS.isActive);
+  const [volume] = useMMKVNumber(KEYS.volumeValue);
 
   useEffect(() => {
     timerRef.current = timerValue;
@@ -18,17 +22,27 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const task = useCallback(
     async (taskDataArguments: TaskData | undefined) => {
       const { delay } = taskDataArguments!;
-      console.log("TASK STARTED", delay);
+      console.log("TASK STARTED", delay, volumeValue, volume);
       await new Promise(resolve => setTimeout(resolve, delay));
-      VolumeManager.setVolume(volumeValue);
-      console.log("TASK FINISHED", volumeValue, VolumeManager.getVolume());
+      const v = Number((volumeValue / 100).toFixed(2));
+      console.log("V", v);
+      VolumeManager.setVolume(v);
+      console.log("TASK FINISHED", delay, volumeValue, volume, VolumeManager.getVolume());
       await BackgroundService.stop();
+      //  TODO: notify user this action has been done 
     },
     [volumeValue]
   );
 
   useEffect(() => {
     async function startDelayedAdjustment() {
+      console.log("IS ACTIVE: ", isActive);
+      if (!isActive) {
+        console.log("should not run.")
+        return;
+      }
+
+
       if (BackgroundService.isRunning()) {
         console.log("SERVICE ALREADY RUNNING");
         return;

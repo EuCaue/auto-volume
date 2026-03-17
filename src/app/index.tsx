@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {  useState } from "react";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
@@ -15,18 +15,19 @@ import { Popup } from "@/components/Popup";
 import { SurfaceButton } from "@/components/SurfaceButton";
 import { useVolumeScheduler } from "@/features/volume/useVolumeScheduler";
 import { formatTime } from "@/utils/time";
+import { useMMKVBoolean, useMMKVNumber, useMMKVString } from "react-native-mmkv";
+import { KEYS } from "@/utils/storage";
 
 export default function Index() {
-  //  TODO: need to put those into a store
-  const [isActive, setIsActive] = useState<boolean>(false);
-  const [timerValue, setTimerValue] = useState<string>("00:00:05");
-  const [volumeValue, setVolumeValue] = useState<number>(100);
+  const [isActive, setIsActive] = useMMKVBoolean(KEYS.isActive);
+  const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue)
+  const [volumeValue, setVolumeValue] = useMMKVNumber(KEYS.volumeValue);
 
   const [showVolumeDialog, setShowVolumeDialog] = useState<boolean>(false);
   const [showTimerDialog, setShowTimerDialog] = useState<boolean>(false);
   const theme = useTheme();
 
-  useVolumeScheduler(timerValue, volumeValue);
+  useVolumeScheduler(timerValue!, volumeValue!);
 
   return (
     <View style={styles.flex}>
