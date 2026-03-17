@@ -1,4 +1,4 @@
-import {  useState } from "react";
+import { useCallback, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
@@ -14,10 +14,13 @@ import {
 import { Popup } from "@/components/Popup";
 import { SurfaceButton } from "@/components/SurfaceButton";
 import { useVolumeScheduler } from "@/features/volume/useVolumeScheduler";
-import { formatTime } from "@/utils/time";
+import { formatTime, timerToMs } from "@/utils/time";
 import { useMMKVBoolean, useMMKVNumber, useMMKVString } from "react-native-mmkv";
-import { KEYS } from "@/utils/storage";
+import { DEFAULT_VALUES, KEYS } from "@/utils/storage";
 
+//  TODO: use toast 
+//  TODO: implement sidebar/header
+//  TODO: maybe add a threshold 
 export default function Index() {
   const [isActive, setIsActive] = useMMKVBoolean(KEYS.isActive);
   const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue)
@@ -28,6 +31,9 @@ export default function Index() {
   const theme = useTheme();
 
   useVolumeScheduler(timerValue!, volumeValue!);
+  const timerError = useCallback((timeValue?: string) => {
+    return timerToMs(timeValue ?? DEFAULT_VALUES.timerValue) <= 0;
+  }, []);
 
   return (
     <View style={styles.flex}>
@@ -116,7 +122,12 @@ export default function Index() {
       </Popup>
 
       <Popup
-        onClose={() => setShowTimerDialog(false)}
+        onClose={() => {
+          if (timerValue && timerToMs(timerValue) <= 0) {
+            return;
+          }
+          setShowTimerDialog(false);
+        }}
         open={showTimerDialog}
         title="Schedule"
         description="Configure the schedule that should trigger the volume."
@@ -125,10 +136,11 @@ export default function Index() {
           keyboardType="number-pad"
           value={timerValue}
           left={<TextInput.Icon icon="clock" />}
+          error={timerError(timerValue)}
           right={
             <TextInput.Icon
               icon="close"
-              onPress={() => setTimerValue("00:00:00")}
+              onPress={() => setTimerValue(DEFAULT_VALUES.timerValue)}
             />
           }
           contentStyle={{
@@ -137,7 +149,8 @@ export default function Index() {
             textAlign: "center",
           }}
           onChangeText={text => {
-            setTimerValue(formatTime(text));
+            const timer = formatTime(text)
+            setTimerValue(timer);
           }}
         />
 
@@ -147,9 +160,10 @@ export default function Index() {
           style={{
             ...theme.fonts.titleSmall,
             textAlign: "center",
+            color: timerError(timerValue) ? theme.colors.error : "current-color"
           }}
         >
-          HH:MM:SS
+          {timerError(timerValue) ? "Time must be greater than 00:00:00." : "HH:MM:SS"}
         </HelperText>
       </Popup>
     </View>
@@ -162,7 +176,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   toggleContainer: {
     justifyContent: "center",
     alignItems: "center",
