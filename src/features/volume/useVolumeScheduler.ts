@@ -3,17 +3,17 @@ import BackgroundService from "react-native-background-actions";
 import { VolumeManager } from "react-native-volume-manager";
 
 import { timerToMs } from "@/utils/time";
-import { useMMKVBoolean, useMMKVNumber } from "react-native-mmkv";
-import { KEYS } from "@/utils/storage";
+import { useMMKVBoolean } from "react-native-mmkv";
+import { KEYS, storage } from "@/utils/storage";
 
 type TaskData = {
   delay: number;
 };
 
+//  TODO: stop when isActive is false whilte active
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
   const [isActive] = useMMKVBoolean(KEYS.isActive);
-  const [volume] = useMMKVNumber(KEYS.volumeValue);
 
   useEffect(() => {
     timerRef.current = timerValue;
@@ -22,23 +22,26 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const task = useCallback(
     async (taskDataArguments: TaskData | undefined) => {
       const { delay } = taskDataArguments!;
-      console.log("TASK STARTED", delay, volumeValue, volume);
+      console.log("TASK STARTED", delay, volumeValue, isActive);
       await new Promise(resolve => setTimeout(resolve, delay));
+      const isActiveNow = storage.getBoolean(KEYS.isActive);
+
+      if (!isActiveNow) {
+        await BackgroundService.stop();
+        return;
+      }
       const v = Number((volumeValue / 100).toFixed(2));
-      console.log("V", v);
       VolumeManager.setVolume(v);
-      console.log("TASK FINISHED", delay, volumeValue, volume, VolumeManager.getVolume());
+      console.log("TASK FINISHED", delay, volumeValue, isActive);
       await BackgroundService.stop();
       //  TODO: notify user this action has been done 
     },
-    [volumeValue]
+    [isActive, volumeValue]
   );
 
   useEffect(() => {
     async function startDelayedAdjustment() {
-      console.log("IS ACTIVE: ", isActive);
       if (!isActive) {
-        console.log("should not run.")
         return;
       }
 
@@ -47,13 +50,6 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
         console.log("SERVICE ALREADY RUNNING");
         return;
       }
-
-      console.log(
-        "CURRENT: ",
-        timerRef.current,
-        timerToMs(timerRef.current),
-        volumeValue
-      );
 
       const options = {
         taskName: "Volume Timer",
@@ -69,13 +65,13 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
         },
       };
 
-      console.log("OPTIONS", options);
+      // console.log("OPTIONS", options);
 
       try {
         console.log("STARTING SERVICE");
         await BackgroundService.start(task, options);
       } catch (error) {
-        console.log("BACKGROUND ERROR", error);
+        console.error("BACKGROUND SERVICE ERROR", error);
       }
     }
 
@@ -85,5 +81,5 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
     });
 
     return () => subscription.remove();
-  }, [task, volumeValue]);
+  }, [isActive, task, volumeValue]);
 }

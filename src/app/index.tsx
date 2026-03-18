@@ -21,6 +21,7 @@ import { DEFAULT_VALUES, KEYS } from "@/utils/storage";
 //  TODO: use toast 
 //  TODO: implement sidebar/header
 //  TODO: maybe add a threshold 
+//  TODO: add the permanent notification 
 export default function Index() {
   const [isActive, setIsActive] = useMMKVBoolean(KEYS.isActive);
   const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue)
