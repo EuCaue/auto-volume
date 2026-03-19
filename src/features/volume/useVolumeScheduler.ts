@@ -8,9 +8,10 @@ import { KEYS, storage } from "@/utils/storage";
 
 type TaskData = {
   delay: number;
-};
+} | undefined;
 
-//  TODO: stop when isActive is false whilte active
+//  TODO: change the delay in runtime 
+//  TODO: add background notification with actions 
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
   const [isActive] = useMMKVBoolean(KEYS.isActive);
@@ -19,25 +20,26 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
     timerRef.current = timerValue;
   }, [timerValue]);
 
-  const task = useCallback(
-    async (taskDataArguments: TaskData | undefined) => {
-      const { delay } = taskDataArguments!;
-      console.log("TASK STARTED", delay, volumeValue, isActive);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      const isActiveNow = storage.getBoolean(KEYS.isActive);
+  const task = useCallback(async (taskData: TaskData) => {
+    const interval = 1000;
+    const { delay } = taskData!
+    let remaining = delay;
 
+    while (remaining > 0) {
+      await new Promise(r => setTimeout(r, interval));
+      remaining -= interval;
+
+      const isActiveNow = storage.getBoolean(KEYS.isActive);
       if (!isActiveNow) {
+        console.log("NOT ACTIVE")
         await BackgroundService.stop();
         return;
       }
-      const v = Number((volumeValue / 100).toFixed(2));
-      VolumeManager.setVolume(v);
-      console.log("TASK FINISHED", delay, volumeValue, isActive);
-      await BackgroundService.stop();
-      //  TODO: notify user this action has been done 
-    },
-    [isActive, volumeValue]
-  );
+    }
+
+    VolumeManager.setVolume(Number((volumeValue / 100).toFixed(2)));
+    await BackgroundService.stop();
+  }, [volumeValue]);
 
   useEffect(() => {
     async function startDelayedAdjustment() {
@@ -53,8 +55,8 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
 
       const options = {
         taskName: "Volume Timer",
-        taskTitle: "Volume Timer running",
-        taskDesc: "Waiting to adjust volume",
+        taskTitle: " ",
+        taskDesc: " ",
         taskIcon: {
           name: "ic_launcher",
           type: "mipmap",
