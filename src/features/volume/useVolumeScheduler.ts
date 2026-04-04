@@ -7,6 +7,7 @@ import { useMMKVBoolean } from "react-native-mmkv";
 import { KEYS, storage } from "@/utils/storage";
 import { upsertServiceNotification } from "../notifications/notificationService";
 import { accessibilityProps } from "react-native-paper/lib/typescript/components/MaterialCommunityIcon";
+import { stopVolumeScheduler } from "./stopVolumeScheduler";
 
 type TaskData =
   | {
@@ -15,7 +16,6 @@ type TaskData =
   | undefined;
 
 //  TODO: change the delay in runtime
-//  TODO: add background notification with actions
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
   const [isActive] = useMMKVBoolean(KEYS.isActive);
@@ -29,6 +29,7 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
       const interval = 1000;
       const { delay } = taskData!;
       let remaining = delay;
+      storage.set(KEYS.isTaskRunning, true);
 
       while (remaining > 0) {
         await new Promise((r) => setTimeout(r, interval));
@@ -39,11 +40,11 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
           storage.getBoolean(KEYS.isTaskRunning);
         if (!isActiveNow) {
           console.log("NOT ACTIVE OR RUNNING");
-          await BackgroundService.stop();
+          await stopVolumeScheduler();
           return;
         }
         await upsertServiceNotification({
-          title: "Esperando para ajustar o volume.",
+          title: "Waiting to adjust the volume.",
           body: `Faltam ${Math.ceil(remaining / 1000)}s`,
         });
       }
@@ -52,12 +53,12 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
 
       await upsertServiceNotification(
         {
-          title: "Serviço finalizado.",
-          body: "Volume ajustado ✅",
+          title: "Service finished.",
+          body: "Volume adjusted ✅",
         },
         [],
       );
-      await BackgroundService.stop();
+      await stopVolumeScheduler();
     },
     [volumeValue],
   );
@@ -86,8 +87,6 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
           delay: timerToMs(timerRef.current),
         },
       };
-
-      // console.log("OPTIONS", options);
 
       try {
         console.log("STARTING SERVICE");

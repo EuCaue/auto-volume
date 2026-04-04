@@ -13,8 +13,8 @@ export async function upsertServiceNotification(
 ) {
   await notifee.displayNotification({
     id: NOTIFICATION_ID,
-    title: input?.title ?? "Volume Timer rodando",
-    body: input?.body ?? "Aguardando...",
+      title: input?.title ?? "Volume Timer running",
+      body: input?.body ?? "Waiting...",
     android: {
       channelId: "service",
       asForegroundService: true,
