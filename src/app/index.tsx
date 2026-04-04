@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
@@ -15,25 +15,42 @@ import { Popup } from "@/components/Popup";
 import { SurfaceButton } from "@/components/SurfaceButton";
 import { useVolumeScheduler } from "@/features/volume/useVolumeScheduler";
 import { formatTime, timerToMs } from "@/utils/time";
-import { useMMKVBoolean, useMMKVNumber, useMMKVString } from "react-native-mmkv";
+import {
+  useMMKVBoolean,
+  useMMKVNumber,
+  useMMKVString,
+} from "react-native-mmkv";
 import { DEFAULT_VALUES, KEYS } from "@/utils/storage";
 
-//  TODO: use toast 
+import { useNotificationsPermissions } from "@/features/notifications/useNotificationsPermissions";
+import { createChannel } from "@/features/notifications/notificationsChannel";
+import { registerNotificationEvents } from "@/features/notifications/notificationsEvents";
+
+//  TODO: use toast
 //  TODO: implement sidebar/header
-//  TODO: maybe add a threshold 
-//  TODO: add the permanent notification 
+//  TODO: maybe add a threshold
 export default function Index() {
   const [isActive, setIsActive] = useMMKVBoolean(KEYS.isActive);
-  const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue)
+  const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue);
   const [volumeValue, setVolumeValue] = useMMKVNumber(KEYS.volumeValue);
 
   const [showVolumeDialog, setShowVolumeDialog] = useState<boolean>(false);
   const [showTimerDialog, setShowTimerDialog] = useState<boolean>(false);
   const theme = useTheme();
 
+  //  TODO: use this 
+  const { permissionGranted } = useNotificationsPermissions();
+  console.log("PERMISSIONGRANTED", permissionGranted);
+
   useVolumeScheduler(timerValue!, volumeValue!);
   const timerError = useCallback((timeValue?: string) => {
     return timerToMs(timeValue ?? DEFAULT_VALUES.timerValue) <= 0;
+  }, []);
+
+  useEffect(() => {
+    createChannel();
+    const unsubscribe = registerNotificationEvents();
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -149,8 +166,8 @@ export default function Index() {
             justifyContent: "center",
             textAlign: "center",
           }}
-          onChangeText={text => {
-            const timer = formatTime(text)
+          onChangeText={(text) => {
+            const timer = formatTime(text);
             setTimerValue(timer);
           }}
         />
@@ -161,10 +178,14 @@ export default function Index() {
           style={{
             ...theme.fonts.titleSmall,
             textAlign: "center",
-            color: timerError(timerValue) ? theme.colors.error : "current-color"
+            color: timerError(timerValue)
+              ? theme.colors.error
+              : "current-color",
           }}
         >
-          {timerError(timerValue) ? "Time must be greater than 00:00:00." : "HH:MM:SS"}
+          {timerError(timerValue)
+            ? "Time must be greater than 00:00:00."
+            : "HH:MM:SS"}
         </HelperText>
       </Popup>
     </View>

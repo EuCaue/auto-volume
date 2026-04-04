@@ -5,13 +5,17 @@ import { VolumeManager } from "react-native-volume-manager";
 import { timerToMs } from "@/utils/time";
 import { useMMKVBoolean } from "react-native-mmkv";
 import { KEYS, storage } from "@/utils/storage";
+import { upsertServiceNotification } from "../notifications/notificationService";
+import { accessibilityProps } from "react-native-paper/lib/typescript/components/MaterialCommunityIcon";
 
-type TaskData = {
-  delay: number;
-} | undefined;
+type TaskData =
+  | {
+      delay: number;
+    }
+  | undefined;
 
-//  TODO: change the delay in runtime 
-//  TODO: add background notification with actions 
+//  TODO: change the delay in runtime
+//  TODO: add background notification with actions
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
   const [isActive] = useMMKVBoolean(KEYS.isActive);
@@ -20,33 +24,49 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
     timerRef.current = timerValue;
   }, [timerValue]);
 
-  const task = useCallback(async (taskData: TaskData) => {
-    const interval = 1000;
-    const { delay } = taskData!
-    let remaining = delay;
+  const task = useCallback(
+    async (taskData: TaskData) => {
+      const interval = 1000;
+      const { delay } = taskData!;
+      let remaining = delay;
 
-    while (remaining > 0) {
-      await new Promise(r => setTimeout(r, interval));
-      remaining -= interval;
+      while (remaining > 0) {
+        await new Promise((r) => setTimeout(r, interval));
+        remaining -= interval;
 
-      const isActiveNow = storage.getBoolean(KEYS.isActive);
-      if (!isActiveNow) {
-        console.log("NOT ACTIVE")
-        await BackgroundService.stop();
-        return;
+        const isActiveNow =
+          storage.getBoolean(KEYS.isActive) ||
+          storage.getBoolean(KEYS.isTaskRunning);
+        if (!isActiveNow) {
+          console.log("NOT ACTIVE OR RUNNING");
+          await BackgroundService.stop();
+          return;
+        }
+        await upsertServiceNotification({
+          title: "Esperando para ajustar o volume.",
+          body: `Faltam ${Math.ceil(remaining / 1000)}s`,
+        });
       }
-    }
 
-    VolumeManager.setVolume(Number((volumeValue / 100).toFixed(2)));
-    await BackgroundService.stop();
-  }, [volumeValue]);
+      VolumeManager.setVolume(Number((volumeValue / 100).toFixed(2)));
+
+      await upsertServiceNotification(
+        {
+          title: "Serviço finalizado.",
+          body: "Volume ajustado ✅",
+        },
+        [],
+      );
+      await BackgroundService.stop();
+    },
+    [volumeValue],
+  );
 
   useEffect(() => {
     async function startDelayedAdjustment() {
       if (!isActive) {
         return;
       }
-
 
       if (BackgroundService.isRunning()) {
         console.log("SERVICE ALREADY RUNNING");
