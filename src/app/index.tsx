@@ -1,4 +1,5 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect } from "react";
+import notifee, { AuthorizationStatus } from "@notifee/react-native";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
@@ -36,9 +37,11 @@ export default function Index() {
 
   const [showVolumeDialog, setShowVolumeDialog] = useState<boolean>(false);
   const [showTimerDialog, setShowTimerDialog] = useState<boolean>(false);
+  const [showPermissionsDialog, setShowPermissionsDialog] =
+    useState<boolean>(false);
   const theme = useTheme();
 
-  //  TODO: use this 
+  //  TODO: use this
   const { permissionGranted } = useNotificationsPermissions();
   console.log("PERMISSIONGRANTED", permissionGranted);
 
@@ -102,6 +105,7 @@ export default function Index() {
           icon="cog-outline"
           onPress={async () => {
             console.log("permission button");
+            setShowPermissionsDialog(true);
           }}
         />
       </View>
@@ -187,6 +191,32 @@ export default function Index() {
             ? "Time must be greater than 00:00:00."
             : "HH:MM:SS"}
         </HelperText>
+      </Popup>
+
+      <Popup
+        onClose={() => {
+          setShowPermissionsDialog(false);
+        }}
+        open={showPermissionsDialog}
+        title="Permissions"
+        description="Guarantee the necessary permissions for the app to work correctly."
+        style={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <SurfaceButton
+          icon="bell"
+          style={{
+            backgroundColor: permissionGranted
+              ? theme.colors.surface
+              : theme.colors.onSurfaceDisabled,
+          }}
+          onPress={async () => {
+            await notifee.openNotificationSettings();
+          }}
+        />
       </Popup>
     </View>
   );

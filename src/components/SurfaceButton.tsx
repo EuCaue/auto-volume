@@ -1,11 +1,13 @@
+import { StyleProp, ViewStyle } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
 
 type SurfaceButtonProps = {
   icon: string;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function SurfaceButton({ icon, onPress }: SurfaceButtonProps) {
+export function SurfaceButton({ icon, onPress, style }: SurfaceButtonProps) {
   const theme = useTheme();
   const size = theme.fonts.displayMedium.fontSize;
   const box = size * 1.5;
@@ -19,6 +21,7 @@ export function SurfaceButton({ icon, onPress }: SurfaceButtonProps) {
         width: box,
         height: box,
         borderRadius: box / 2,
+        ...style
       }}
       onPress={onPress}
     />

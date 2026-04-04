@@ -1,12 +1,20 @@
 import { PropsWithChildren } from "react";
-import { View } from "react-native";
-import { Button, Dialog, Icon, Portal, Text, useTheme } from "react-native-paper";
+import { StyleProp, View, ViewStyle } from "react-native";
+import {
+  Button,
+  Dialog,
+  Icon,
+  Portal,
+  Text,
+  useTheme,
+} from "react-native-paper";
 
 type PopupProps = {
   onClose: () => void;
   open: boolean;
   title: string;
   description: string;
+  style?: StyleProp<ViewStyle>;
 } & PropsWithChildren;
 
 export function Popup({
@@ -15,6 +23,7 @@ export function Popup({
   title,
   description,
   children,
+  style,
 }: PopupProps) {
   const theme = useTheme();
 
@@ -46,7 +55,7 @@ export function Popup({
           </View>
         </Dialog.Title>
 
-        <Dialog.Content>{children}</Dialog.Content>
+        <Dialog.Content style={style}>{children}</Dialog.Content>
 
         <Dialog.Actions style={{ justifyContent: "center" }}>
           <Button
