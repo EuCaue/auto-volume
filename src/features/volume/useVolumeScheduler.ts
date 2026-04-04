@@ -48,13 +48,12 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
         }
         await upsertServiceNotification({
           title: "Waiting to adjust the volume.",
-          body: `Faltam ${Math.ceil(remaining / 1000)}s`,
+          body: `${Math.ceil(remaining / 1000)}s remaining`,
         });
       }
 
       VolumeManager.setVolume(Number((volumeValue / 100).toFixed(2)));
 
-      //  TODO: check to see how it was ended and react dif
       await upsertServiceNotification(
         {
           title: "Service finished.",

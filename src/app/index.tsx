@@ -41,9 +41,7 @@ export default function Index() {
     useState<boolean>(false);
   const theme = useTheme();
 
-  //  TODO: use this
   const { permissionGranted } = useNotificationsPermissions();
-  console.log("PERMISSIONGRANTED", permissionGranted);
 
   useVolumeScheduler(timerValue!, volumeValue!);
   const timerError = useCallback((timeValue?: string) => {
