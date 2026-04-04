@@ -1,8 +1,6 @@
 import { storage, KEYS, DEFAULT_VALUES } from "@/utils/storage";
-import BackgroundService from "react-native-background-actions";
 import { VolumeManager } from "react-native-volume-manager";
 import notifee, { EventType } from "@notifee/react-native";
-import { dismissServiceNotification } from "./notificationService";
 import { stopVolumeScheduler } from "../volume/stopVolumeScheduler";
 
 export function registerNotificationEvents() {

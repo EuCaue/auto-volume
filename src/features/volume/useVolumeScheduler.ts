@@ -5,7 +5,10 @@ import { VolumeManager } from "react-native-volume-manager";
 import { timerToMs } from "@/utils/time";
 import { useMMKVBoolean } from "react-native-mmkv";
 import { KEYS, storage } from "@/utils/storage";
-import { upsertServiceNotification } from "../notifications/notificationService";
+import {
+  dismissServiceNotification,
+  upsertServiceNotification,
+} from "../notifications/notificationService";
 import { accessibilityProps } from "react-native-paper/lib/typescript/components/MaterialCommunityIcon";
 import { stopVolumeScheduler } from "./stopVolumeScheduler";
 
@@ -35,10 +38,10 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
         await new Promise((r) => setTimeout(r, interval));
         remaining -= interval;
 
-        const isActiveNow =
-          storage.getBoolean(KEYS.isActive) ||
-          storage.getBoolean(KEYS.isTaskRunning);
-        if (!isActiveNow) {
+        const isAppActive = storage.getBoolean(KEYS.isActive);
+        const isTaskRunning = storage.getBoolean(KEYS.isTaskRunning);
+
+        if (!isAppActive || isTaskRunning === false) {
           console.log("NOT ACTIVE OR RUNNING");
           await stopVolumeScheduler();
           return;
@@ -51,6 +54,7 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
 
       VolumeManager.setVolume(Number((volumeValue / 100).toFixed(2)));
 
+      //  TODO: check to see how it was ended and react dif
       await upsertServiceNotification(
         {
           title: "Service finished.",

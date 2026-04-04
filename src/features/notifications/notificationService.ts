@@ -13,8 +13,8 @@ export async function upsertServiceNotification(
 ) {
   await notifee.displayNotification({
     id: NOTIFICATION_ID,
-      title: input?.title ?? "Volume Timer running",
-      body: input?.body ?? "Waiting...",
+    title: input?.title ?? "Volume Timer running",
+    body: input?.body ?? "Waiting...",
     android: {
       channelId: "service",
       asForegroundService: true,
@@ -35,4 +35,5 @@ export async function upsertServiceNotification(
 
 export async function dismissServiceNotification() {
   await notifee.cancelNotification(NOTIFICATION_ID);
+  await notifee.stopForegroundService();
 }
