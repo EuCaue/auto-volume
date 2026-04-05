@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import BackgroundService from "react-native-background-actions";
 import { VolumeManager } from "react-native-volume-manager";
-
 import { timerToMs } from "@/utils/time";
 import { useMMKVBoolean } from "react-native-mmkv";
 import { KEYS, storage } from "@/utils/storage";
-import {
-  dismissServiceNotification,
-  upsertServiceNotification,
-} from "../notifications/notificationService";
+import { upsertServiceNotification } from "../notifications/notificationService";
 import { accessibilityProps } from "react-native-paper/lib/typescript/components/MaterialCommunityIcon";
 import { stopVolumeScheduler } from "./stopVolumeScheduler";
 
@@ -21,6 +17,7 @@ type TaskData =
 //  TODO: change the delay in runtime
 export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   const timerRef = useRef(timerValue);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isActive] = useMMKVBoolean(KEYS.isActive);
 
   useEffect(() => {
@@ -101,7 +98,20 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
 
     const subscription = VolumeManager.addVolumeListener(() => {
       console.log("VOLUME changed");
-      startDelayedAdjustment();
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+
+      debounceRef.current = setTimeout(() => {
+        startDelayedAdjustment();
+      }, 1500); // 1.5s
+      return () => {
+        subscription.remove();
+
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+      };
     });
 
     return () => subscription.remove();

@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import notifee, { AuthorizationStatus } from "@notifee/react-native";
+import notifee from "@notifee/react-native";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
 import Slider from "@react-native-community/slider";
@@ -22,14 +22,12 @@ import {
   useMMKVString,
 } from "react-native-mmkv";
 import { DEFAULT_VALUES, KEYS } from "@/utils/storage";
-
 import { useNotificationsPermissions } from "@/features/notifications/useNotificationsPermissions";
 import { createChannel } from "@/features/notifications/notificationsChannel";
 import { registerNotificationEvents } from "@/features/notifications/notificationsEvents";
 
 //  TODO: use toast
 //  TODO: implement sidebar/header
-//  TODO: maybe add a threshold
 export default function Index() {
   const [isActive, setIsActive] = useMMKVBoolean(KEYS.isActive);
   const [timerValue, setTimerValue] = useMMKVString(KEYS.timerValue);
