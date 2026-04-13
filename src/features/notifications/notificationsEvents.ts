@@ -4,6 +4,8 @@ import notifee, { EventType } from "@notifee/react-native";
 import { stopVolumeScheduler } from "../volume/stopVolumeScheduler";
 
 export function registerNotificationEvents() {
+  notifee.onBackgroundEvent(async () => {});
+
   return notifee.onForegroundEvent(async ({ type, detail }) => {
     if (type === EventType.ACTION_PRESS) {
       const action = detail.pressAction?.id;

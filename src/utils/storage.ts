@@ -23,8 +23,9 @@ export const KEYS: { [K in keyof typeof DEFAULT_VALUES]: K } = {
 export const storage = createMMKV();
 
 for (const [k, v] of Object.entries(DEFAULT_VALUES)) {
-  const value = storage.getString(k);
-  console.log("VALUE", value);
+  const value =
+    storage.getString(k) ?? storage.getNumber(k) ?? storage.getBoolean(k);
+
   if (value === undefined) {
     storage.set(k, v);
     console.log(`Storage does not include ${k}.`);
