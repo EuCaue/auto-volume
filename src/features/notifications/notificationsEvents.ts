@@ -1,28 +1,40 @@
-import { storage, KEYS, DEFAULT_VALUES } from "@/utils/storage";
+import { EventType } from "@notifee/react-native";
 import { VolumeManager } from "react-native-volume-manager";
-import notifee, { EventType } from "@notifee/react-native";
+
+import { DEFAULT_VALUES, KEYS, storage } from "@/utils/storage";
+
 import { stopVolumeScheduler } from "../volume/stopVolumeScheduler";
 
-export function registerNotificationEvents() {
-  notifee.onBackgroundEvent(async () => {});
+type NotificationEvent = {
+  type: EventType;
+  detail: {
+    pressAction?: {
+      id?: string;
+    };
+  };
+};
 
-  return notifee.onForegroundEvent(async ({ type, detail }) => {
-    if (type === EventType.ACTION_PRESS) {
-      const action = detail.pressAction?.id;
+export async function handleNotificationEvent({
+  type,
+  detail,
+}: NotificationEvent) {
+  if (type !== EventType.ACTION_PRESS) {
+    return;
+  }
 
-      if (action === "stop_service") {
-        console.log("STOP");
-        await stopVolumeScheduler(() => console.log("STOP SERVICE"));
-      }
+  const action = detail.pressAction?.id;
 
-      if (action === "run_now") {
-        await stopVolumeScheduler(() => {
-          const volumeValue: number =
-            (storage.getNumber(KEYS.volumeValue) ??
-              DEFAULT_VALUES.volumeValue) / 100;
-          VolumeManager.setVolume(Number(volumeValue.toFixed(2)));
-        });
-      }
-    }
-  });
+  if (action === "stop_service") {
+    await stopVolumeScheduler();
+  }
+
+  if (action === "run_now") {
+    await stopVolumeScheduler(() => {
+      const volumeValue =
+        (storage.getNumber(KEYS.volumeValue) ?? DEFAULT_VALUES.volumeValue) /
+        100;
+
+      void VolumeManager.setVolume(Number(volumeValue.toFixed(2)));
+    });
+  }
 }

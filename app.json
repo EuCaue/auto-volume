@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["NOTIFICATIONS"],
+      "permissions": ["POST_NOTIFICATIONS"],
       "package": "com.anonymous.autovolume"
     },
     "web": {

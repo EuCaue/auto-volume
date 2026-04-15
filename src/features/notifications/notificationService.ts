@@ -17,7 +17,6 @@ export async function upsertServiceNotification(
     body: input?.body ?? "Waiting...",
     android: {
       channelId: "service",
-      asForegroundService: true,
       ongoing: true,
       actions: actions ?? [
         {
@@ -35,5 +34,4 @@ export async function upsertServiceNotification(
 
 export async function dismissServiceNotification() {
   await notifee.cancelNotification(NOTIFICATION_ID);
-  await notifee.stopForegroundService();
 }

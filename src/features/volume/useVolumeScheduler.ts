@@ -2,14 +2,42 @@ import { useCallback, useEffect } from "react";
 import BackgroundService from "react-native-background-actions";
 import { VolumeManager } from "react-native-volume-manager";
 import { useMMKVBoolean } from "react-native-mmkv";
+
 import { KEYS, storage } from "@/utils/storage";
 import { timerToMs } from "@/utils/time";
-import { upsertServiceNotification } from "../notifications/notificationService";
+
 import { stopVolumeScheduler } from "./stopVolumeScheduler";
 
 type ServiceTaskData = undefined;
 
-export function useVolumeScheduler(timerValue: string, volumeValue: number) {
+const SERVICE_OPTIONS = {
+  taskName: "Volume Timer",
+  taskTitle: "Volume Timer",
+  taskDesc: "Listening for volume changes...",
+  taskIcon: {
+    name: "ic_launcher",
+    type: "mipmap",
+  },
+  color: "#ffffff",
+} as const;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function updateServiceNotification(taskDesc: string) {
+  if (!BackgroundService.isRunning()) {
+    return;
+  }
+
+  await BackgroundService.updateNotification({ taskDesc });
+}
+
+export function useVolumeScheduler(
+  timerValue: string,
+  volumeValue: number,
+  canRunInBackground = true,
+) {
   const [isActive] = useMMKVBoolean(KEYS.isActive);
 
   useEffect(() => {
@@ -21,92 +49,105 @@ export function useVolumeScheduler(timerValue: string, volumeValue: number) {
   }, [volumeValue]);
 
   const task = useCallback(async (_taskData: ServiceTaskData) => {
-    let executeAt = 0;
-    let lastVolume = -1;
+    let executeAt = Number(storage.getNumber(KEYS.executeAt) ?? 0);
+    let lastNotificationText = "";
+    let ignoreVolumeEventsUntil = 0;
 
     const clearPendingTimer = () => {
       executeAt = 0;
+      storage.set(KEYS.executeAt, 0);
       storage.set(KEYS.isTaskRunning, false);
     };
+
+    const scheduleVolumeUpdate = () => {
+      const timerValueFromStorage =
+        storage.getString(KEYS.timerValue) ?? "00:00:00";
+      const delay = timerToMs(timerValueFromStorage);
+
+      if (delay <= 0) {
+        clearPendingTimer();
+        return;
+      }
+
+      executeAt = Date.now() + delay;
+      storage.set(KEYS.executeAt, executeAt);
+      storage.set(KEYS.isTaskRunning, true);
+    };
+
+    const volumeListener = VolumeManager.addVolumeListener(() => {
+      if (!storage.getBoolean(KEYS.isActive)) {
+        return;
+      }
+
+      if (Date.now() < ignoreVolumeEventsUntil) {
+        return;
+      }
+
+      scheduleVolumeUpdate();
+    });
 
     try {
       while (BackgroundService.isRunning()) {
         const active = storage.getBoolean(KEYS.isActive);
-        if (!active) break;
 
-        // Polling — verifica volume atual
-        const { volume } = await VolumeManager.getVolume();
-
-        if (lastVolume !== -1 && volume !== lastVolume) {
-          const timerValueFromStorage = storage.getString(KEYS.timerValue) ?? "0m";
-          const delay = timerToMs(timerValueFromStorage);
-
-          if (delay <= 0) {
-            clearPendingTimer();
-          } else {
-            executeAt = Date.now() + delay;
-            storage.set(KEYS.isTaskRunning, true);
-          }
+        if (!active) {
+          break;
         }
 
-        lastVolume = volume;
+        let nextNotificationText = "Listening for volume changes...";
 
         if (executeAt > 0) {
           const remaining = Math.max(0, executeAt - Date.now());
-
-          await upsertServiceNotification({
-            title: "Waiting to adjust the volume.",
-            body: `${Math.ceil(remaining / 1000)}s remaining`,
-          });
+          nextNotificationText = `${Math.ceil(remaining / 1000)}s remaining`;
 
           if (remaining <= 0) {
             const latestVolume = Number(storage.getNumber(KEYS.volumeValue) ?? 0);
-            const safeVolume = Math.max(0, Math.min(1, Number((latestVolume / 100).toFixed(2))));
+            const safeVolume = Math.max(
+              0,
+              Math.min(1, Number((latestVolume / 100).toFixed(2))),
+            );
 
             try {
+              ignoreVolumeEventsUntil = Date.now() + 1500;
               await VolumeManager.setVolume(safeVolume);
             } catch (error) {
               console.error("FAILED TO SET VOLUME", error);
             }
 
-            await upsertServiceNotification({ title: "Service finished.", body: "Volume adjusted ✅" }, []);
+            nextNotificationText = "Volume adjusted.";
             clearPendingTimer();
           }
-        } else {
-          await upsertServiceNotification({
-            title: "Volume Timer",
-            body: "Listening for volume changes...",
-          });
         }
 
-        await new Promise((r) => setTimeout(r, 1000));
+        if (lastNotificationText !== nextNotificationText) {
+          await updateServiceNotification(nextNotificationText);
+          lastNotificationText = nextNotificationText;
+        }
+
+        await sleep(1000);
       }
     } finally {
+      volumeListener.remove();
       clearPendingTimer();
     }
   }, []);
 
   useEffect(() => {
     async function syncServiceState() {
-      if (!isActive) {
-        if (BackgroundService.isRunning()) await stopVolumeScheduler();
+      if (!isActive || !canRunInBackground) {
+        if (BackgroundService.isRunning()) {
+          await stopVolumeScheduler();
+        }
         return;
       }
 
-      if (BackgroundService.isRunning()) return;
+      if (BackgroundService.isRunning()) {
+        return;
+      }
 
-      await BackgroundService.start(task, {
-        taskName: "Volume Timer",
-        taskTitle: "Volume Timer",
-        taskDesc: "Listening for volume changes...",
-        taskIcon: {
-          name: "ic_launcher",
-          type: "mipmap",
-        },
-        color: "#ffffff",
-      });
+      await BackgroundService.start(task, SERVICE_OPTIONS);
     }
 
     void syncServiceState();
-  }, [isActive, task]);
+  }, [canRunInBackground, isActive, task]);
 }

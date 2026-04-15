@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import notifee from "@notifee/react-native";
 import { StyleSheet, View } from "react-native";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons";
@@ -23,8 +23,6 @@ import {
 } from "react-native-mmkv";
 import { DEFAULT_VALUES, KEYS } from "@/utils/storage";
 import { useNotificationsPermissions } from "@/features/notifications/useNotificationsPermissions";
-import { createChannel } from "@/features/notifications/notificationsChannel";
-import { registerNotificationEvents } from "@/features/notifications/notificationsEvents";
 
 //  TODO: use toast
 //  TODO: implement sidebar/header
@@ -39,17 +37,12 @@ export default function Index() {
     useState<boolean>(false);
   const theme = useTheme();
 
-  const { permissionGranted } = useNotificationsPermissions();
+  const { permissionGranted, requestPermission } =
+    useNotificationsPermissions();
 
-  useVolumeScheduler(timerValue!, volumeValue!);
+  useVolumeScheduler(timerValue!, volumeValue!, permissionGranted);
   const timerError = useCallback((timeValue?: string) => {
     return timerToMs(timeValue ?? DEFAULT_VALUES.timerValue) <= 0;
-  }, []);
-
-  useEffect(() => {
-    createChannel();
-    const unsubscribe = registerNotificationEvents();
-    return () => unsubscribe();
   }, []);
 
   return (
@@ -210,7 +203,11 @@ export default function Index() {
               : theme.colors.onSurfaceDisabled,
           }}
           onPress={async () => {
-            await notifee.openNotificationSettings();
+            const granted = await requestPermission();
+
+            if (!granted) {
+              await notifee.openNotificationSettings();
+            }
           }}
         />
       </Popup>
