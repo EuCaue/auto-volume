@@ -67,6 +67,13 @@ class AutoVolumeForegroundService : Service() {
         return START_NOT_STICKY
       }
 
+      AutoVolumeBackgroundConfig.ACTION_RUN_NOW -> {
+        ignoreVolumeEventsUntil = System.currentTimeMillis() + 1500
+        AutoVolumeBackgroundConfig.cancelAlarm(this)
+        AutoVolumeBackgroundConfig.applyTargetVolume(this)
+        updateNotification()
+      }
+
       AutoVolumeBackgroundConfig.ACTION_ALARM_TRIGGERED -> {
         ignoreVolumeEventsUntil = System.currentTimeMillis() + 1500
         updateNotification()

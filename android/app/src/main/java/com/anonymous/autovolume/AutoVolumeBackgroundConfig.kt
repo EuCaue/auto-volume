@@ -27,6 +27,7 @@ object AutoVolumeBackgroundConfig {
 
   const val ACTION_START_OR_UPDATE = "com.anonymous.autovolume.START_OR_UPDATE"
   const val ACTION_STOP = "com.anonymous.autovolume.STOP"
+  const val ACTION_RUN_NOW = "com.anonymous.autovolume.RUN_NOW"
   const val ACTION_ALARM_TRIGGERED = "com.anonymous.autovolume.ALARM_TRIGGERED"
   const val ACTION_VOLUME_CHANGED = "android.media.VOLUME_CHANGED_ACTION"
 
@@ -133,6 +134,8 @@ object AutoVolumeBackgroundConfig {
       .setOngoing(true)
       .setOnlyAlertOnce(true)
       .setPriority(NotificationCompat.PRIORITY_LOW)
+      .addAction(0, "Run", buildServicePendingIntent(context, ACTION_RUN_NOW, 1))
+      .addAction(0, "Stop", buildServicePendingIntent(context, ACTION_STOP, 2))
       .build()
   }
 
@@ -161,6 +164,23 @@ object AutoVolumeBackgroundConfig {
     return PendingIntent.getBroadcast(
       context,
       0,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
+  private fun buildServicePendingIntent(
+    context: Context,
+    action: String,
+    requestCode: Int,
+  ): PendingIntent {
+    val intent = Intent(context, AutoVolumeForegroundService::class.java).apply {
+      this.action = action
+    }
+
+    return PendingIntent.getService(
+      context,
+      requestCode,
       intent,
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
